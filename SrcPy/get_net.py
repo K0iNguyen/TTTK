@@ -247,12 +247,11 @@ def create_new_chat():
         conversation = conversation_manager.create_conversation(selected_text, current_url)
 
         try:
-            with open(current_url, "r", encoding="utf-8") as f:
-                html = f.read()
+            
             ctx = build_context_from_source(
                 selected_text=selected_text,
-                url_or_html=html,
-                top_k=3,
+                url_or_html=current_url,
+                top_k=5,
                 max_tokens=320
             )
             conversation.set_context(ctx)  # <-- store dict as-is
