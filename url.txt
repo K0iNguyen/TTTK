@@ -1,1 +1,1 @@
-https://www.cnn.com/2025/08/09/europe/trump-putin-summit-analysis-2-intl
+https://pypi.org/project/faiss-cpu/

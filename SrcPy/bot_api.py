@@ -23,3 +23,8 @@ class chat_api:
     def determineMood(self, text):
         response = (self.ask_client(model="gpt-4o-mini", input=f"Determine the mood of this text: {text}. Your answer should be just the mood word.")).output_text
         return response
+    
+    def followupQuestion(self, old_text, question):
+        response = (self.ask_client(model="gpt-4o-mini", input=f"Continue this conversation {old_text}, answer this question: {question}.")).output_text
+        return response
+    

@@ -1,7 +1,7 @@
 # textify.py
 """
 Tiny helpers:
-- html_to_markdown(url_or_html) -> {"title": str, "markdown": str}
+- html_to_markdown(url_or_file) -> {"title": str, "markdown": str}
 - split_markdown(markdown, max_tokens=350) -> [chunk1, chunk2, ...]
 
 If tiktoken is installed, max_tokens is accurate; otherwise we approximate by chars (~4 chars/token).
@@ -28,9 +28,9 @@ except Exception:
     _TOK = False
 
 
-def html_to_markdown(url_or_html: str) -> Dict[str, str]:
+def html_to_markdown(url_or_file: str) -> Dict[str, str]:
     """Fetch/clean HTML, keep main article, convert to Markdown."""
-    html = requests.get(url_or_html).text if url_or_html.startswith(("http://", "https://")) else url_or_html
+    html = requests.get(url_or_file).text if url_or_file.startswith(("http://", "https://")) else requests.get(open(url_or_file, "r").read()).text
 
     # Strip obvious boilerplate early
     soup = BeautifulSoup(html, "lxml")

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
-
+from test import print_chunks_from_url
 def get_html():
     file = open("url.txt", "r")
     url = file.read()
@@ -24,6 +24,7 @@ def process_data():
     file.write(variable_from_js)
     file.close()
     get_html()
+    print_chunks_from_url("url.txt")
     processed_result = variable_from_js * 2 
     return jsonify(result=processed_result)
 
