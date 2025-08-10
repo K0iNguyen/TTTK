@@ -457,6 +457,7 @@ function sendMessage() {
         userQuestion: message
     });
 
+
     // Send to Python backend
     sendToBackend(selectedText, message);
 }

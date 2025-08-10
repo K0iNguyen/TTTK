@@ -1,16 +1,15 @@
-// try {
-//     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-// } catch (err) {
-// };
-
 // Button to explicitly request microphone permission
 const askProf = document.getElementById('askProf');
 askProf.addEventListener('click', async () => {
-    chrome.tabs.create({ url: "http://localhost:8080/" });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  if (tabs.length > 0) {
+    const currentUrl = tabs[0].url;
+    sendVariableToPython(currentUrl);
+  }
+  });
+  // chrome.tabs.create({ url: "http://localhost:8080/" });
 });
 
-
-// popup.js
 // Custom modal for lower popup
 function showCustomPopup(message) {
   let modal = document.createElement('div');
@@ -31,4 +30,21 @@ function showCustomPopup(message) {
   setTimeout(() => {
     modal.remove();
   }, 2000);
+}
+
+function sendVariableToPython(url) {
+    fetch('http://localhost:5000/process_data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ theURL: url }) // Send as JSON
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Response from Python:', data.result);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
 }
