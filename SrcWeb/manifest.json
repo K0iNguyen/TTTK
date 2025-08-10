@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
   "name": "TTTM",
-  "version": "1.0",
-  "permissions": ["scripting", "activeTab", "tabs", "audioCapture", "storage"],
+  "version": "1.0.1",
+  "description": "Floating actions on text selection (define / report / voice).",
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -11,6 +16,14 @@
       "128": "icon.png"
     }
   },
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "background.js"
   },
