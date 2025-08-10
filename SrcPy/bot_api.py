@@ -6,7 +6,7 @@ class chat_api:
 
     def askDefinition(self, word):
         response = (self.ask_client(model="gpt-4o-mini", input=f"What is the definition of this {word}?. Give a concise answer.")).output_text
-        file = open(r"../convoContext.txt", "w")
+        file = open(r"convoContext.txt", "w")
         file.write(response)
         file.close()
         return response
@@ -29,12 +29,12 @@ class chat_api:
         return response
     
     def followupQuestion(self, question):
-        file = open(r"../convoContext.txt", "r+")
+        file = open(r"convoContext.txt", "r+")
         file.write(f"\n{self.determineMood(question)}\n")
         old_text = file.read()
         file.close()
         response = (self.ask_client(model="gpt-4o-mini", input=f"Continue this conversation {old_text}, The question is: {question}. Based on the current context answer this question")).output_text
-        file = open(r"../convoContext.txt", "a")
+        file = open(r"convoContext.txt", "a")
         file.write("\n" + response)
         file.close()
         return response
