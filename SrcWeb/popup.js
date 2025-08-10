@@ -6,9 +6,9 @@
 // Button to explicitly request microphone permission
 const askProf = document.getElementById('askProf');
 askProf.addEventListener('click', async () => {
+    
     chrome.tabs.create({ url: "http://localhost:8080/" });
 });
-
 
 // popup.js
 // Custom modal for lower popup
@@ -32,3 +32,4 @@ function showCustomPopup(message) {
     modal.remove();
   }, 2000);
 }
+
