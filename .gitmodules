@@ -1,0 +1,3 @@
+[submodule "SrcWeb/chat-box-sim"]
+	path = SrcWeb/chat-box-sim
+	url = https://github.com/K0iNguyen/chat-box-sim
