@@ -26,7 +26,6 @@ class ChatbotConversation:
         self.conversation_id = conversation_id or str(uuid.uuid4())
         self.selected_text = selected_text
         self.current_url = current_url
-        # self.context = choose_chunks(selected_text)
         self.chat_history = []
         self.created_at = datetime.now()
         self.last_activity = datetime.now()
@@ -94,7 +93,7 @@ Type a number (1-5) to choose, or ask your own question directly."""
             elif any(keyword in user_input.lower() for keyword in ['mood', 'tone', 'emotion']):
                 return self.handle_predefined_option('4')
             
-            # # For general questions, use askSpecific
+            # For general questions, use askSpecific
             # return chat_client.askSpecific(f"Based on this selected text: '{self.selected_text}', please answer: {user_question}")
 
             # For general questions: prioritize the stored context, but allow extra info if clearly marked
@@ -200,32 +199,21 @@ CORS(app)  # Allow all origins for development
 # Initialize conversation manager
 conversation_manager = ConversationManager()
 
-
-@app.route('/process_data', methods=['POST'])
-def process_data():
-    data = request.get_json()  # Get data sent as JSON
-    variable_from_js = data.get('theURL') # Access the variable
-    
-    # Process variable_from_js in Python
-    file = open("url.txt", "w")
-    file.write(variable_from_js)
-    file.close()
-    get_html()
-    processed_result = variable_from_js * 2 
-    return jsonify(result=processed_result)
-
 # @app.route('/api/chat/new', methods=['POST'])
 # def create_new_chat():
 #     """Create a new chat conversation for selected text"""
 #     try:
 #         data = request.get_json()
 #         selected_text = data.get('selectedText', '')
+#         current_url = data.get('currentUrl', '')
+
+#         print("Current_url is: ", current_url)
         
 #         if not selected_text:
 #             return jsonify({'error': 'No selected text provided'}), 400
             
-#         # Create new conversation
-#         conversation = conversation_manager.create_conversation(selected_text)
+#         # Create new conversation with URL
+#         conversation = conversation_manager.create_conversation(selected_text, current_url)
         
 #         # Generate initial message with options
 #         initial_message = conversation.generate_initial_message()
@@ -234,6 +222,7 @@ def process_data():
 #             'success': True,
 #             'conversation_id': conversation.conversation_id,
 #             'selected_text': selected_text,
+#             'current_url': current_url,
 #             'initial_message': initial_message,
 #             'created_at': conversation.created_at.isoformat()
 #         })
@@ -242,23 +231,19 @@ def process_data():
 #         logger.error(f"Error creating new chat: {str(e)}")
 #         return jsonify({'error': str(e)}), 500
 
-
 @app.route('/api/chat/new', methods=['POST'])
 def create_new_chat():
     """Create a new chat conversation for selected text"""
     try:
         data = request.get_json()
         selected_text = data.get('selectedText', '')
-        current_url = data.get('currentUrl', '')
 
-        print("Current_url is: ", current_url)
-        
         if not selected_text:
             return jsonify({'error': 'No selected text provided'}), 400
-            
-        # Create new conversation with URL
-        conversation = conversation_manager.create_conversation(selected_text, current_url)
-        
+
+        # Create new conversation
+        conversation = conversation_manager.create_conversation(selected_text)
+
         try:
             with open("page.html", "r", encoding="utf-8") as f:
                 html = f.read()
@@ -279,26 +264,22 @@ def create_new_chat():
             })
 
         initial_message = conversation.generate_initial_message()
+
         return jsonify({
-
-            'success': True,
-            'conversation_id': conversation.conversation_id,
-            'selected_text': selected_text,
-            'current_url': current_url,
-            'initial_message': initial_message,
-            'created_at': conversation.created_at.isoformat()
-
+            "success": True,
+            "conversation_id": conversation.conversation_id,
+            "selected_text": selected_text,
+            "initial_message": initial_message,
             # optional debug fields pulled from the dict
             # "context_ready": bool(conversation.context.get("context")),
             # "context_title": conversation.context.get("title", ""),
             # "context_chunks": len(conversation.context.get("selected_chunks", [])),
-
         })
-        
+
     except Exception as e:
         logger.error(f"Error creating new chat: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
+    
 @app.route('/api/chat/message', methods=['POST'])
 def send_chat_message():
     """Send a message in an existing conversation"""
