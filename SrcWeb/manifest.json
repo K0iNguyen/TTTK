@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TTTM",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Floating actions on text selection (define / report / voice).",
   "icons": {
     "16": "icon.png",
@@ -19,7 +19,8 @@
   "permissions": [
     "storage",
     "scripting",
-    "activeTab", "audioCapture"
+    "activeTab",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>"

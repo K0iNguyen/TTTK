@@ -8,6 +8,8 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__))) #don't delete this, this enables access to bot_api file
 from bot_api import chat_api
+from textify import build_context_from_source
+from typing import Dict, Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,12 +22,18 @@ chat_client = chat_api(openai_api_key)
 class ChatbotConversation:
     """Unique conversation object for each text selection"""
     
-    def __init__(self, selected_text, conversation_id=None):
+    def __init__(self, selected_text, current_url=None, conversation_id=None):
         self.conversation_id = conversation_id or str(uuid.uuid4())
         self.selected_text = selected_text
+        self.current_url = current_url
         self.chat_history = []
         self.created_at = datetime.now()
         self.last_activity = datetime.now()
+        self.context: Dict[str, Any] = {}
+    
+    def set_context(self, context: Dict[str, Any]):
+        """Store the full context dictionary (from build_context_from_source)."""
+        self.context = context
         
     def add_message(self, user_question, bot_response=None):
         """Add a message to the conversation history"""
@@ -37,6 +45,10 @@ class ChatbotConversation:
         }
         self.chat_history.append(message)
         self.last_activity = datetime.now()
+        
+    def get_page_url(self):
+        """Get the stored page URL for this conversation"""
+        return self.current_url
         
     # def get_context(self):
     #     """Get conversation context for LLM"""
@@ -82,7 +94,28 @@ Type a number (1-5) to choose, or ask your own question directly."""
                 return self.handle_predefined_option('4')
             
             # For general questions, use askSpecific
-            return chat_client.askSpecific(f"Based on this selected text: '{self.selected_text}', please answer: {user_question}")
+            # return chat_client.askSpecific(f"Based on this selected text: '{self.selected_text}', please answer: {user_question}")
+
+            # For general questions: prioritize the stored context, but allow extra info if clearly marked
+            ctx_text = (
+                self.context.get("context")
+                if isinstance(self.context, dict) else f"Selection: {self.selected_text}"
+            )
+
+            prompt = (
+                "Answer using BOTH the provided CONTEXT and your general knowledge.\n"
+                "Guidelines:\n"
+                "1) Lead with general knowledge and provide the best, up-to-date, consensus answer.\n"
+                "2) If the CONTEXT adds a useful quote, number, definition, or example, incorporate it and cite the chunk like [Chunk 2].\n"
+                "3) If CONTEXT and general knowledge conflict, explain the discrepancy and prefer the most reliable/consensus view.\n"
+                "4) If the CONTEXT is sparse or off-topic, say so briefly and proceed using general knowledge.\n"
+                "5) Keep the answer clear and concise\n\n"
+                f"CONTEXT:\n{ctx_text}\n\n"
+                f"QUESTION:\n{user_question}"
+            )
+
+            return chat_client.askSpecific(prompt)
+
             
         except Exception as e:
             logger.error(f"Error generating LLM response: {str(e)}")
@@ -127,11 +160,11 @@ class ConversationManager:
     def __init__(self):
         self.active_conversations = {}
         
-    def create_conversation(self, selected_text):
+    def create_conversation(self, selected_text, current_url=None):
         """Create a new conversation for selected text"""
-        conversation = ChatbotConversation(selected_text)
+        conversation = ChatbotConversation(selected_text, current_url)
         self.active_conversations[conversation.conversation_id] = conversation
-        logger.info(f"Created new conversation: {conversation.conversation_id}")
+        logger.info(f"Created new conversation: {conversation.conversation_id} for URL: {current_url}")
         return conversation
         
     def get_conversation(self, conversation_id):
@@ -159,15 +192,6 @@ class ConversationManager:
         for conv_id in to_delete:
             self.delete_conversation(conv_id)
 
-def get_html():
-    file = open("url.txt", "r")
-    url = file.read()
-    file.close()
-    response = requests.get(url)
-    file = open("page.html", "w", encoding='utf-8')
-    file.write(response.text)
-    file.close()
-
 app = Flask(__name__)
 # Enable CORS for the specific Chrome extension
 CORS(app)  # Allow all origins for development
@@ -175,18 +199,37 @@ CORS(app)  # Allow all origins for development
 # Initialize conversation manager
 conversation_manager = ConversationManager()
 
-@app.route('/process_data', methods=['POST'])
-def process_data():
-    data = request.get_json()  # Get data sent as JSON
-    variable_from_js = data.get('theURL') # Access the variable
-    
-    # Process variable_from_js in Python
-    file = open("url.txt", "w")
-    file.write(variable_from_js)
-    file.close()
-    get_html()
-    processed_result = variable_from_js * 2 
-    return jsonify(result=processed_result)
+# @app.route('/api/chat/new', methods=['POST'])
+# def create_new_chat():
+#     """Create a new chat conversation for selected text"""
+#     try:
+#         data = request.get_json()
+#         selected_text = data.get('selectedText', '')
+#         current_url = data.get('currentUrl', '')
+
+#         print("Current_url is: ", current_url)
+        
+#         if not selected_text:
+#             return jsonify({'error': 'No selected text provided'}), 400
+            
+#         # Create new conversation with URL
+#         conversation = conversation_manager.create_conversation(selected_text, current_url)
+        
+#         # Generate initial message with options
+#         initial_message = conversation.generate_initial_message()
+        
+#         return jsonify({
+#             'success': True,
+#             'conversation_id': conversation.conversation_id,
+#             'selected_text': selected_text,
+#             'current_url': current_url,
+#             'initial_message': initial_message,
+#             'created_at': conversation.created_at.isoformat()
+#         })
+        
+#     except Exception as e:
+#         logger.error(f"Error creating new chat: {str(e)}")
+#         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/chat/new', methods=['POST'])
 def create_new_chat():
@@ -194,28 +237,53 @@ def create_new_chat():
     try:
         data = request.get_json()
         selected_text = data.get('selectedText', '')
-        
+        current_url = data.get('currentUrl', '')
+        print("Current_url is: ", current_url)
+
         if not selected_text:
             return jsonify({'error': 'No selected text provided'}), 400
-            
+
         # Create new conversation
-        conversation = conversation_manager.create_conversation(selected_text)
-        
-        # Generate initial message with options
+        conversation = conversation_manager.create_conversation(selected_text, current_url)
+
+        try:
+            with open(current_url, "r", encoding="utf-8") as f:
+                html = f.read()
+            ctx = build_context_from_source(
+                selected_text=selected_text,
+                url_or_html=html,
+                top_k=3,
+                max_tokens=320
+            )
+            conversation.set_context(ctx)  # <-- store dict as-is
+        except Exception as e:
+            logger.warning(f"Context build failed; fallback to selection only: {e}")
+            conversation.set_context({
+                "title": "",
+                "context": f"Selection: {selected_text}",
+                "selected_indices": [],
+                "selected_chunks": []
+            })
+
         initial_message = conversation.generate_initial_message()
-        
+
         return jsonify({
-            'success': True,
-            'conversation_id': conversation.conversation_id,
-            'selected_text': selected_text,
-            'initial_message': initial_message,
+            "success": True,
+            "conversation_id": conversation.conversation_id,
+            "selected_text": selected_text,
+            "initial_message": initial_message,
+            'current_url': current_url,
             'created_at': conversation.created_at.isoformat()
+            # optional debug fields pulled from the dict
+            # "context_ready": bool(conversation.context.get("context")),
+            # "context_title": conversation.context.get("title", ""),
+            # "context_chunks": len(conversation.context.get("selected_chunks", [])),
         })
-        
+
     except Exception as e:
         logger.error(f"Error creating new chat: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
+    
 @app.route('/api/chat/message', methods=['POST'])
 def send_chat_message():
     """Send a message in an existing conversation"""
