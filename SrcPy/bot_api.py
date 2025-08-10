@@ -14,7 +14,7 @@ class chat_api:
         except Exception as e:
             return f"Error getting definition: {str(e)}"
     
-    def askCuriculum(self, prompt, file_path):
+    def askCurriculum(self, prompt, file_path):
         try:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",

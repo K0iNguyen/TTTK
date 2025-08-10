@@ -48,32 +48,78 @@ class ChatbotConversation:
     #         'message_count': len(self.chat_history)
     #     }
         
-    def generate_llm_response(self, user_question):
-        """Generate LLM response based on selected text and conversation history"""
-        try:
-            # Build context from conversation history
-            context_messages = []
-            if self.chat_history:
-                for msg in self.chat_history[-3:]:  # Last 3 messages for context
-                    context_messages.append(f"User: {msg['user_question']}")
-                    if msg['bot_response']:
-                        context_messages.append(f"Assistant: {msg['bot_response']}")
-            
-            # Create comprehensive prompt
-            prompt = f"""You are an AI assistant helping a user understand selected text from a webpage.
-Selected Text: "{self.selected_text}"
-Previous conversation context:
-{chr(10).join(context_messages) if context_messages else "No previous context"}
-Current question: {user_question}
-Please provide a helpful, accurate response based on the selected text and the user's question. Keep your response concise but informative."""
+    def generate_initial_message(self):
+        """Generate initial message with question options"""
+        return """Hi! I can help you understand the selected text. What would you like to know about it?
 
-            # Use the existing chat API
-            response = chat_client.askSpecific(prompt)
-            return response
+Please choose from these options (type the number):
+1. Ask for definition - Get the meaning of words or phrases
+2. Create learning curriculum - Get a step-by-step learning plan
+3. Find topic - Categorize and identify the main topic
+4. Determine mood - Analyze the emotional tone of the text
+5. Ask specific question - Ask any other question about the text
+
+Type a number (1-5) to choose, or ask your own question directly."""
+
+    def generate_llm_response(self, user_question):
+        """Generate LLM response based on selected text, conversation history, and question type"""
+        try:
+            # Check if user is selecting a predefined option
+            user_input = user_question.strip()
+            
+            # Handle numbered options
+            if user_input in ['1', '2', '3', '4', '5']:
+                return self.handle_predefined_option(user_input)
+            
+            # Check for option keywords
+            if any(keyword in user_input.lower() for keyword in ['definition', 'define', 'meaning']):
+                return self.handle_predefined_option('1')
+            elif any(keyword in user_input.lower() for keyword in ['curriculum', 'learning plan', 'study plan']):
+                return self.handle_predefined_option('2')
+            elif any(keyword in user_input.lower() for keyword in ['topic', 'categorize', 'category']):
+                return self.handle_predefined_option('3')
+            elif any(keyword in user_input.lower() for keyword in ['mood', 'tone', 'emotion']):
+                return self.handle_predefined_option('4')
+            
+            # For general questions, use askSpecific
+            return chat_client.askSpecific(f"Based on this selected text: '{self.selected_text}', please answer: {user_question}")
             
         except Exception as e:
             logger.error(f"Error generating LLM response: {str(e)}")
             return f"I apologize, but I encountered an error processing your question. Please try again."
+    
+    def handle_predefined_option(self, option):
+        """Handle predefined question options"""
+        try:
+            if option == '1':  # Definition
+                return chat_client.askDefinition(self.selected_text)
+            elif option == '2':  # Curriculum
+                # For curriculum, we'll return the content instead of writing to file
+                temp_file = "temp_curriculum.md"
+                chat_client.askCurriculum(self.selected_text, temp_file)
+                try:
+                    with open(temp_file, "r", encoding='utf-8') as file:
+                        curriculum_content = file.read()
+                    os.remove(temp_file)  # Clean up temp file
+                    return curriculum_content
+                except:
+                    return "I created a learning curriculum, but there was an issue retrieving it. Please try again."
+            elif option == '3':  # Find Topic
+                topic_result = chat_client.findTopic(self.selected_text, "general knowledge")
+                if isinstance(topic_result, list) and len(topic_result) >= 2:
+                    return f"Main Topic: {topic_result[0]}\n\nExplanation: {topic_result[1]}"
+                else:
+                    return f"Main Topic: {topic_result}"
+            elif option == '4':  # Determine Mood
+                mood = chat_client.determineMood(self.selected_text)
+                return f"The mood/tone of this text is: {mood}"
+            elif option == '5':  # Specific question
+                return "Please go ahead and ask your specific question about the selected text."
+            else:
+                return "Please choose a valid option (1-5) or ask your question directly."
+        except Exception as e:
+            logger.error(f"Error handling predefined option {option}: {str(e)}")
+            return f"I encountered an error processing your request. Please try again."
 
 class ConversationManager:
     """Manages all active conversations"""
@@ -155,10 +201,14 @@ def create_new_chat():
         # Create new conversation
         conversation = conversation_manager.create_conversation(selected_text)
         
+        # Generate initial message with options
+        initial_message = conversation.generate_initial_message()
+        
         return jsonify({
             'success': True,
             'conversation_id': conversation.conversation_id,
             'selected_text': selected_text,
+            'initial_message': initial_message,
             'created_at': conversation.created_at.isoformat()
         })
         
