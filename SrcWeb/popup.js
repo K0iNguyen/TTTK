@@ -36,10 +36,10 @@ document.getElementById('checkMicBtn').addEventListener('click', () => {
 document.getElementById('micBtn').addEventListener('click', () => {
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(stream => {
-      console.log('Microphone access granted');
+      showCustomPopup('Microphone access granted');
     })
     .catch(err => {
-      console.error('Permission denied or error:', err);
+      showCustomPopup('Permission denied or error:', err);
     });
 });
 
