@@ -14,7 +14,6 @@ from bs4 import BeautifulSoup
 from readability import Document
 import html2text
 import numpy as np
-# from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 import faiss
 
@@ -27,12 +26,53 @@ except Exception:
     def _tok_len(s: str) -> int: return max(1, len(s) // 4)
     _TOK = False
 
+import requests
 
-def html_to_markdown(url_or_file: str) -> Dict[str, str]:
-    """Fetch/clean HTML, keep main article, convert to Markdown."""
-    html = requests.get(url_or_file).text if url_or_file.startswith(("http://", "https://")) else requests.get(open(url_or_file, "r").read()).text
+def is_pdf_url(url: str) -> bool:
+    """Check if the URL points to a PDF by extension or content-type."""
+    # Quick check by extension or known pattern
+    if url.lower().endswith('.pdf') or 'arxiv.org/pdf/' in url.lower():
+        return True
+    
+    try:
+        # Send a HEAD request to check headers without downloading full content
+        response = requests.head(url, allow_redirects=True, timeout=5)
+        content_type = response.headers.get("Content-Type", "").lower()
+        return "application/pdf" in content_type
+    except requests.RequestException:
+        return False
 
-    # Strip obvious boilerplate early
+
+def extract_text_from_pdf(url: str) -> str:
+    """Extract text from PDF using pdfminer.six."""
+    from io import BytesIO
+    from pdfminer.high_level import extract_text
+    
+    response = requests.get(url)
+    response.raise_for_status()
+    pdf_file = BytesIO(response.content)
+    return extract_text(pdf_file)
+
+def html_to_markdown(url_or_html: str) -> Dict[str, str]:
+    """Fetch/clean content from URL or HTML, convert to Markdown."""
+    # Handle PDF URLs
+    if (url_or_html.startswith(("http://", "https://")) and 
+        is_pdf_url(url_or_html)):
+        try:
+            text = extract_text_from_pdf(url_or_html)
+            return {
+                "title": os.path.basename(url_or_html),
+                "markdown": f"# PDF Content\n\n{text}"
+            }
+        except Exception as e:
+            raise ValueError(f"Failed to process PDF: {str(e)}")
+
+    # Handle HTML content
+    html = (requests.get(url_or_html).text 
+            if url_or_html.startswith(("http://", "https://")) 
+            else url_or_html)
+
+    # HTML processing
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style", "noscript", "iframe", "svg"]):
         tag.decompose()
@@ -47,14 +87,18 @@ def html_to_markdown(url_or_file: str) -> Dict[str, str]:
     h2t = html2text.HTML2Text()
     h2t.ignore_links = False
     h2t.ignore_images = True
+    h2t.body_width = 0  # Don't wrap text
     md = h2t.handle(main_html)
 
-    # Normalize whitespace
+    # Normalize whitespace and clean up markdown
     md = re.sub(r"[ \t]+\n", "\n", md)
     md = re.sub(r"\n{3,}", "\n\n", md).strip()
+    md = re.sub(r"\[([^\]]+)\]\(\s*\)", r"\1", md)  # Remove empty links
 
     return {"title": title, "markdown": md}
 
+import re
+from typing import List
 
 def split_markdown(md: str, max_tokens: int = 350) -> List[str]:
     """Split Markdown by headings/paragraphs and pack into chunks under max_tokens."""
@@ -124,6 +168,7 @@ def split_markdown(md: str, max_tokens: int = 350) -> List[str]:
 
 #     ranked = sorted(zip(sims, chunks), key=lambda x: x[0], reverse=True)
 #     return [chunk for _, chunk in ranked[:top_k]]
+
 
 # Load a local embedding model
 # (all-MiniLM-L6-v2 is small, fast, and good for semantic similarity)
