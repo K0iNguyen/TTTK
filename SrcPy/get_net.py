@@ -22,9 +22,10 @@ chat_client = chat_api(openai_api_key)
 class ChatbotConversation:
     """Unique conversation object for each text selection"""
     
-    def __init__(self, selected_text, conversation_id=None):
+    def __init__(self, selected_text, current_url=None, conversation_id=None):
         self.conversation_id = conversation_id or str(uuid.uuid4())
         self.selected_text = selected_text
+        self.current_url = current_url
         # self.context = choose_chunks(selected_text)
         self.chat_history = []
         self.created_at = datetime.now()
@@ -45,6 +46,10 @@ class ChatbotConversation:
         }
         self.chat_history.append(message)
         self.last_activity = datetime.now()
+        
+    def get_page_url(self):
+        """Get the stored page URL for this conversation"""
+        return self.current_url
         
     # def get_context(self):
     #     """Get conversation context for LLM"""
@@ -156,11 +161,11 @@ class ConversationManager:
     def __init__(self):
         self.active_conversations = {}
         
-    def create_conversation(self, selected_text):
+    def create_conversation(self, selected_text, current_url=None):
         """Create a new conversation for selected text"""
-        conversation = ChatbotConversation(selected_text)
+        conversation = ChatbotConversation(selected_text, current_url)
         self.active_conversations[conversation.conversation_id] = conversation
-        logger.info(f"Created new conversation: {conversation.conversation_id}")
+        logger.info(f"Created new conversation: {conversation.conversation_id} for URL: {current_url}")
         return conversation
         
     def get_conversation(self, conversation_id):
@@ -188,21 +193,13 @@ class ConversationManager:
         for conv_id in to_delete:
             self.delete_conversation(conv_id)
 
-def get_html():
-    file = open("url.txt", "r")
-    url = file.read()
-    file.close()
-    response = requests.get(url)
-    file = open("page.html", "w", encoding='utf-8')
-    file.write(response.text)
-    file.close()
-
 app = Flask(__name__)
 # Enable CORS for the specific Chrome extension
 CORS(app)  # Allow all origins for development
 
 # Initialize conversation manager
 conversation_manager = ConversationManager()
+
 
 @app.route('/process_data', methods=['POST'])
 def process_data():
@@ -245,18 +242,22 @@ def process_data():
 #         logger.error(f"Error creating new chat: {str(e)}")
 #         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/chat/new', methods=['POST'])
 def create_new_chat():
     """Create a new chat conversation for selected text"""
     try:
         data = request.get_json()
         selected_text = data.get('selectedText', '')
+        current_url = data.get('currentUrl', '')
+
+        print("Current_url is: ", current_url)
         
         if not selected_text:
             return jsonify({'error': 'No selected text provided'}), 400
             
-        # Create new conversation
-        conversation = conversation_manager.create_conversation(selected_text)
+        # Create new conversation with URL
+        conversation = conversation_manager.create_conversation(selected_text, current_url)
         
         try:
             with open("page.html", "r", encoding="utf-8") as f:
@@ -279,14 +280,19 @@ def create_new_chat():
 
         initial_message = conversation.generate_initial_message()
         return jsonify({
-            "success": True,
-            "conversation_id": conversation.conversation_id,
-            "selected_text": selected_text,
-            "initial_message": initial_message,
+
+            'success': True,
+            'conversation_id': conversation.conversation_id,
+            'selected_text': selected_text,
+            'current_url': current_url,
+            'initial_message': initial_message,
+            'created_at': conversation.created_at.isoformat()
+
             # optional debug fields pulled from the dict
             # "context_ready": bool(conversation.context.get("context")),
             # "context_title": conversation.context.get("title", ""),
             # "context_chunks": len(conversation.context.get("selected_chunks", [])),
+
         })
         
     except Exception as e:

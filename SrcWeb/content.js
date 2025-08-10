@@ -510,16 +510,25 @@ function handleAskProfessor() {
 // Global conversation ID for current chat session
 let currentConversationId = null;
 
+// Function to get current page URL
+function getCurrentPageUrl() {
+    return window.location.href;
+}
+
 // Initialize conversation and get initial message
 async function initializeConversation(selectedText) {
     try {
+        // Get current page URL
+        const currentUrl = getCurrentPageUrl();
+
         const newChatResponse = await fetch('http://localhost:5000/api/chat/new', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                selectedText: selectedText
+                selectedText: selectedText,
+                currentUrl: currentUrl
             })
         });
 
