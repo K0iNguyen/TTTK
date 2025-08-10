@@ -175,6 +175,7 @@ function handleSelection() {
     const selection = window.getSelection();
     const text = selection.toString().trim();
     console.log('TTTM: Selected text:', text);
+    console.log("Selected123: ", text)
 
     if (text.length > 0) {
         selectedText = text;
@@ -210,8 +211,8 @@ function createChatWindow() {
                 <div class="tttm-selected-content" id="tttm-selected-content"></div>
             </div>
             <div class="tttm-chat-messages" id="tttm-chat-messages">
-                <div class="tttm-message tttm-bot-message">
-                    Hi! I can help you understand the selected text. What would you like to know about it?
+                <div class="tttm-message tttm-bot-message" id="tttm-initial-message">
+                    Loading...
                 </div>
             </div>
         </div>
@@ -338,6 +339,7 @@ function createChatWindow() {
             background: #e3f2fd;
             color: #1565c0;
             align-self: flex-start;
+            white-space: pre-line;
         }
 
         .tttm-user-message {
@@ -416,6 +418,11 @@ function showChatWindow(text) {
     const selectedContent = chatWindow.querySelector('#tttm-selected-content');
     selectedContent.textContent = text;
 
+    console.log("Selected selected: ", text)
+
+    // Initialize conversation and get initial message
+    initializeConversation(text);
+
     // Show the window
     setTimeout(() => {
         chatWindow.classList.add('show');
@@ -428,8 +435,21 @@ function showChatWindow(text) {
 }
 
 // Close chat window
-function closeChatWindow() {
+async function closeChatWindow() {
     if (chatWindow) {
+        // Delete the conversation from backend
+        if (currentConversationId) {
+            try {
+                await fetch(`http://localhost:5000/api/chat/delete/${currentConversationId}`, {
+                    method: 'DELETE'
+                });
+                console.log('TTTM: Deleted conversation:', currentConversationId);
+            } catch (error) {
+                console.error('TTTM: Error deleting conversation:', error);
+            }
+            currentConversationId = null;
+        }
+
         chatWindow.classList.remove('show');
         setTimeout(() => {
             chatWindow.remove();
@@ -442,6 +462,8 @@ function closeChatWindow() {
 function sendMessage() {
     const input = chatWindow.querySelector('#tttm-chat-input');
     const message = input.value.trim();
+
+    console.log("Message is:", message)
 
     if (!message) return;
 
@@ -456,7 +478,6 @@ function sendMessage() {
         selectedText: selectedText,
         userQuestion: message
     });
-
 
     // Send to Python backend
     sendToBackend(selectedText, message);
@@ -477,62 +498,100 @@ function addMessageToChat(message, sender) {
 function handleAskProfessor() {
     if (selectedText) {
         console.log('TTTM: Opening chat window with selected text:', selectedText);
+
+        // Reset conversation ID for new text selection
+        currentConversationId = null;
+
         showChatWindow(selectedText);
         hideWidget();
     }
 }
 
-// Send message to Python backend
-async function sendToBackend(selectedText, userQuestion) {
+// Global conversation ID for current chat session
+let currentConversationId = null;
+
+// Initialize conversation and get initial message
+async function initializeConversation(selectedText) {
     try {
-        const response = await fetch('http://localhost:8080/api/message', {
+        const newChatResponse = await fetch('http://localhost:5000/api/chat/new', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                selectedText: selectedText,
+                selectedText: selectedText
+            })
+        });
+
+        if (!newChatResponse.ok) {
+            throw new Error('Failed to create new chat conversation');
+        }
+
+        const newChatData = await newChatResponse.json();
+        currentConversationId = newChatData.conversation_id;
+        console.log('TTTM: Created new conversation:', currentConversationId);
+
+        // Update initial message with options
+        const initialMessageElement = chatWindow.querySelector('#tttm-initial-message');
+        if (initialMessageElement && newChatData.initial_message) {
+            initialMessageElement.innerHTML = newChatData.initial_message.replace(/\n/g, '<br>');
+        }
+
+        return newChatData;
+
+    } catch (error) {
+        console.error('TTTM: Error initializing conversation:', error);
+        const initialMessageElement = chatWindow.querySelector('#tttm-initial-message');
+        if (initialMessageElement) {
+            initialMessageElement.textContent = 'Sorry, I encountered an error. Please try again.';
+        }
+        return null;
+    }
+}
+
+// Send message to Python backend
+async function sendToBackend(selectedText, userQuestion) {
+    console.log("Selected text, ", selectedText)
+    try {
+        // If no conversation exists, create a new one
+        if (!currentConversationId) {
+            await initializeConversation(selectedText);
+            if (!currentConversationId) {
+                return null;
+            }
+        }
+
+        // Send message to existing conversation
+        const messageResponse = await fetch('http://localhost:5000/api/chat/message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                conversation_id: currentConversationId,
                 userQuestion: userQuestion
             })
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            addMessageToChat(data.response, 'bot');
-        } else {
-            addMessageToChat("Sorry, I couldn't process your request. Please try again.", 'bot');
+        if (!messageResponse.ok) {
+            throw new Error('Failed to send message');
         }
-    } catch (error) {
-        console.error('TTTM: Error sending to backend:', error);
-        addMessageToChat("Connection error. Make sure the Python server is running on localhost:8080", 'bot');
-    }
-}
 
-// Send explanation request to Python backend
-async function sendExplanationRequest(text) {
-    try {
-        const response = await fetch('http://localhost:8080/api/explain', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                text: text
-            })
-        });
+        const messageData = await messageResponse.json();
+        console.log('TTTM: Received response:', messageData);
 
-        if (response.ok) {
-            const data = await response.json();
-            // Show explanation in chat window
-            showChatWindow(text);
-            setTimeout(() => {
-                addMessageToChat(`Explanation: ${data.explanation}`, 'bot');
-            }, 500);
-        } else {
-            console.error('TTTM: Failed to get explanation');
+        // Add bot response to chat
+        if (messageData.bot_response) {
+            addMessageToChat(messageData.bot_response, 'bot');
         }
+
+        console.log("bot message: ", messageData.bot_response)
+        return messageData;
+
     } catch (error) {
-        console.error('TTTM: Error getting explanation:', error);
+        console.error('TTTM: Error communicating with backend:', error);
+        addMessageToChat('Sorry, I encountered an error. Please try again.', 'bot');
+        return null;
     }
 }
 
@@ -540,7 +599,20 @@ async function sendExplanationRequest(text) {
 function handleExplain() {
     if (selectedText) {
         console.log('TTTM: Requesting explanation for:', selectedText);
-        sendExplanationRequest(selectedText);
+
+        // Reset conversation ID for new text selection
+        currentConversationId = null;
+
+        // Open chat window and automatically ask for explanation
+        showChatWindow(selectedText);
+
+        // Auto-send explanation request after initialization
+        setTimeout(() => {
+            const explanationQuestion = "Please explain this text to me.";
+            addMessageToChat(explanationQuestion, 'user');
+            sendToBackend(selectedText, explanationQuestion);
+        }, 1000); // Increased delay to allow initialization
+
         hideWidget();
     }
 }
