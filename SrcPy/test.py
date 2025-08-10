@@ -1,21 +1,25 @@
-from textify import html_to_markdown, split_markdown, choose_chunks
+# test_build_context.py
+from textify import build_context_from_source
 
-# Test with a URL
-page = html_to_markdown("https://arxiv.org/pdf/2503.04831")
-chunks = split_markdown(page["markdown"], max_tokens=300)
+url = "https://arxiv.org/pdf/2503.04831"   # PDF URL works if pdfminer.six is installed
+highlight = "including GPT and LLaMA"
 
-print("TITLE:", page["title"])
-print(f"Total chunks: {len(chunks)}\n")
+ctx = build_context_from_source(
+    selected_text=highlight,
+    url_or_html=url,
+    top_k=3,
+    max_tokens=320
+)
 
-# Preview first chunk
-print("--- First chunk preview ---")
-print(chunks[0], "\n")
+print("TITLE:", ctx.get("title", ""))
+print("Selected indices:", ctx.get("selected_indices", []))
+print("Num selected chunks:", len(ctx.get("selected_chunks", [])))
 
-# Example highlight
-highlight_text = "including GPT and LLama"
-top_chunks = choose_chunks(highlight_text, chunks, top_k=5)
+print("\n=== Context preview (first 700 chars) ===")
+context_text = ctx.get("context", "")
+print(context_text[:700], "...\n")
 
-print(f"=== Top chunks relevant to: '{highlight_text}' ===")
-for i, chunk in enumerate(top_chunks, 1):
-    print(f"\n--- Chunk {i} ---")
-    print(chunk)  # limit preview length
+print("=== Per-chunk previews ===")
+for i, ch in enumerate(ctx.get("selected_chunks", []), 1):
+    print(f"\n--- Chunk {i} ({len(ch)} chars) ---")
+    print(ch[:400], "...")

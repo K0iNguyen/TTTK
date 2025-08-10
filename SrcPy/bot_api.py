@@ -2,7 +2,7 @@ from openai import OpenAI
 
 class chat_api:
     def __init__(self, api_key):
-        self.client = OpenAI(api_key=api_key)
+        self.client = OpenAI(api_key="api_key")
 
     def askDefinition(self, word):
         try:
