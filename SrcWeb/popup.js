@@ -10,6 +10,40 @@ askProf.addEventListener('click', async () => {
   // chrome.tabs.create({ url: "http://localhost:8080/" });
 });
 
+
+document.getElementById('setupMic').addEventListener('click', async () => {
+  chrome.tabs.create({ url: chrome.runtime.getURL("popup.html")});
+});
+
+document.getElementById('checkMicBtn').addEventListener('click', () => {
+  navigator.permissions.query({ name: 'microphone' })
+    .then(result => {
+      const statusElem = document.getElementById('status');
+
+      if (result.state === 'granted') {
+        console.log('Microphone permission already granted.');
+      } 
+      else if (result.state === 'prompt') {
+        statusElem.textContent = '⚠ Asking for microphone access...';
+        requestMic();
+      } 
+      else if (result.state === 'denied') {
+        console.log('Microphone access denied. Check Chrome settings.');
+      }
+    });
+});
+
+document.getElementById('micBtn').addEventListener('click', () => {
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      console.log('Microphone access granted');
+    })
+    .catch(err => {
+      console.error('Permission denied or error:', err);
+    });
+});
+
+
 // Custom modal for lower popup
 function showCustomPopup(message) {
   let modal = document.createElement('div');
