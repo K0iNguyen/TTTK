@@ -237,15 +237,17 @@ def create_new_chat():
     try:
         data = request.get_json()
         selected_text = data.get('selectedText', '')
+        current_url = data.get('currentUrl', '')
+        print("Current_url is: ", current_url)
 
         if not selected_text:
             return jsonify({'error': 'No selected text provided'}), 400
 
         # Create new conversation
-        conversation = conversation_manager.create_conversation(selected_text)
+        conversation = conversation_manager.create_conversation(selected_text, current_url)
 
         try:
-            with open("page.html", "r", encoding="utf-8") as f:
+            with open(current_url, "r", encoding="utf-8") as f:
                 html = f.read()
             ctx = build_context_from_source(
                 selected_text=selected_text,
@@ -270,6 +272,8 @@ def create_new_chat():
             "conversation_id": conversation.conversation_id,
             "selected_text": selected_text,
             "initial_message": initial_message,
+            'current_url': current_url,
+            'created_at': conversation.created_at.isoformat()
             # optional debug fields pulled from the dict
             # "context_ready": bool(conversation.context.get("context")),
             # "context_title": conversation.context.get("title", ""),

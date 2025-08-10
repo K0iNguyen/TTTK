@@ -1,7 +1,7 @@
 # test_build_context.py
 from textify import build_context_from_source
 
-url = "https://arxiv.org/pdf/2503.04831"   # PDF URL works if pdfminer.six is installed
+url = "https://en.wikipedia.org/wiki/Google_Neural_Machine_Translation"   # PDF URL works if pdfminer.six is installed
 highlight = "including GPT and LLaMA"
 
 ctx = build_context_from_source(
