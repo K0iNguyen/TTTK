@@ -21,14 +21,14 @@ document.getElementById('checkMicBtn').addEventListener('click', () => {
       const statusElem = document.getElementById('status');
 
       if (result.state === 'granted') {
-        console.log('Microphone permission already granted.');
+        showCustomPopup('Microphone permission already granted.');
       } 
       else if (result.state === 'prompt') {
         statusElem.textContent = '⚠ Asking for microphone access...';
         requestMic();
       } 
       else if (result.state === 'denied') {
-        console.log('Microphone access denied. Check Chrome settings.');
+        showCustomPopup('Microphone access denied. Check Chrome settings.');
       }
     });
 });

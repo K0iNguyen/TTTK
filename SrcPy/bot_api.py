@@ -6,7 +6,7 @@ class chat_api:
 
     def askDefinition(self, word):
         response = (self.ask_client(model="gpt-4o-mini", input=f"What is the definition of this {word}?. Give a concise answer.")).output_text
-        file = open(r"convoContext.txt", "w")
+        file = open(r"convoContext.txt", "a")
         file.write(response)
         file.close()
         return response

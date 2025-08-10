@@ -19,7 +19,7 @@
   "permissions": [
     "storage",
     "scripting",
-    "activeTab"
+    "activeTab", "audioCapture"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -27,11 +27,27 @@
   "background": {
     "service_worker": "background.js"
   },
-  "web_accessible_resources": [{
-  "resources": ["capture.html", "capture.js"],
-  "matches": ["<all_urls>"],
-  "host_permissions": [
-    "http://localhost:5000/*"
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "capture.html",
+        "capture.js",
+        "icon.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
-}]
 }
