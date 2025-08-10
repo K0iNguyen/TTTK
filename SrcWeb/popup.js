@@ -1,13 +1,11 @@
 // Button to explicitly request microphone permission
-const askProf = document.getElementById('askProf');
-askProf.addEventListener('click', async () => {
+document.getElementById('askProf').addEventListener('click', async () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   if (tabs.length > 0) {
     const currentUrl = tabs[0].url;
     sendVariableToPython(currentUrl);
   }
   });
-  // chrome.tabs.create({ url: "http://localhost:8080/" });
 });
 
 
