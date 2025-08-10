@@ -211,8 +211,8 @@ function createChatWindow() {
                 <div class="tttm-selected-content" id="tttm-selected-content"></div>
             </div>
             <div class="tttm-chat-messages" id="tttm-chat-messages">
-                <div class="tttm-message tttm-bot-message">
-                    Hi! I can help you understand the selected text. What would you like to know about it?
+                <div class="tttm-message tttm-bot-message" id="tttm-initial-message">
+                    Loading...
                 </div>
             </div>
         </div>
@@ -339,6 +339,7 @@ function createChatWindow() {
             background: #e3f2fd;
             color: #1565c0;
             align-self: flex-start;
+            white-space: pre-line;
         }
 
         .tttm-user-message {
@@ -418,6 +419,9 @@ function showChatWindow(text) {
     selectedContent.textContent = text;
 
     console.log("Selected selected: ", text)
+
+    // Initialize conversation and get initial message
+    initializeConversation(text);
 
     // Show the window
     setTimeout(() => {
@@ -506,29 +510,55 @@ function handleAskProfessor() {
 // Global conversation ID for current chat session
 let currentConversationId = null;
 
+// Initialize conversation and get initial message
+async function initializeConversation(selectedText) {
+    try {
+        const newChatResponse = await fetch('http://localhost:5000/api/chat/new', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                selectedText: selectedText
+            })
+        });
+
+        if (!newChatResponse.ok) {
+            throw new Error('Failed to create new chat conversation');
+        }
+
+        const newChatData = await newChatResponse.json();
+        currentConversationId = newChatData.conversation_id;
+        console.log('TTTM: Created new conversation:', currentConversationId);
+
+        // Update initial message with options
+        const initialMessageElement = chatWindow.querySelector('#tttm-initial-message');
+        if (initialMessageElement && newChatData.initial_message) {
+            initialMessageElement.innerHTML = newChatData.initial_message.replace(/\n/g, '<br>');
+        }
+
+        return newChatData;
+
+    } catch (error) {
+        console.error('TTTM: Error initializing conversation:', error);
+        const initialMessageElement = chatWindow.querySelector('#tttm-initial-message');
+        if (initialMessageElement) {
+            initialMessageElement.textContent = 'Sorry, I encountered an error. Please try again.';
+        }
+        return null;
+    }
+}
+
 // Send message to Python backend
 async function sendToBackend(selectedText, userQuestion) {
     console.log("Selected text, ", selectedText)
     try {
         // If no conversation exists, create a new one
         if (!currentConversationId) {
-            const newChatResponse = await fetch('http://localhost:5000/api/chat/new', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    selectedText: selectedText
-                })
-            });
-
-            if (!newChatResponse.ok) {
-                throw new Error('Failed to create new chat conversation');
+            await initializeConversation(selectedText);
+            if (!currentConversationId) {
+                return null;
             }
-
-            const newChatData = await newChatResponse.json();
-            currentConversationId = newChatData.conversation_id;
-            console.log('TTTM: Created new conversation:', currentConversationId);
         }
 
         // Send message to existing conversation
@@ -576,12 +606,12 @@ function handleExplain() {
         // Open chat window and automatically ask for explanation
         showChatWindow(selectedText);
 
-        // Auto-send explanation request
+        // Auto-send explanation request after initialization
         setTimeout(() => {
             const explanationQuestion = "Please explain this text to me.";
             addMessageToChat(explanationQuestion, 'user');
             sendToBackend(selectedText, explanationQuestion);
-        }, 500);
+        }, 1000); // Increased delay to allow initialization
 
         hideWidget();
     }
