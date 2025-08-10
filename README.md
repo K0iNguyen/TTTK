@@ -48,4 +48,4 @@ SrcPy contains:
 - eleven_api.py : Eleven Lab API library
 - get_net.py : Flask Server backend
 - textify.py : Converting raw HTML to relevant plain text chunk
-- window_chat.py : Chatox Back-End
+- window_chat.py : Chatbox Back-End
