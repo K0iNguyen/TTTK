@@ -451,16 +451,14 @@ function sendMessage() {
     // Clear input
     input.value = '';
 
-    // Here you can send the message to your backend
+    // Send the message to Python backend
     console.log('TTTM: Sending to backend:', {
         selectedText: selectedText,
         userQuestion: message
     });
 
-    // Simulate bot response (replace with actual backend call)
-    setTimeout(() => {
-        addMessageToChat("I received your question about the selected text. This is where the backend response will appear.", 'bot');
-    }, 1000);
+    // Send to Python backend
+    sendToBackend(selectedText, message);
 }
 
 // Add message to chat
@@ -483,14 +481,65 @@ function handleAskProfessor() {
     }
 }
 
+// Send message to Python backend
+async function sendToBackend(selectedText, userQuestion) {
+    try {
+        const response = await fetch('http://localhost:8080/api/message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                selectedText: selectedText,
+                userQuestion: userQuestion
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            addMessageToChat(data.response, 'bot');
+        } else {
+            addMessageToChat("Sorry, I couldn't process your request. Please try again.", 'bot');
+        }
+    } catch (error) {
+        console.error('TTTM: Error sending to backend:', error);
+        addMessageToChat("Connection error. Make sure the Python server is running on localhost:8080", 'bot');
+    }
+}
+
+// Send explanation request to Python backend
+async function sendExplanationRequest(text) {
+    try {
+        const response = await fetch('http://localhost:8080/api/explain', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: text
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            // Show explanation in chat window
+            showChatWindow(text);
+            setTimeout(() => {
+                addMessageToChat(`Explanation: ${data.explanation}`, 'bot');
+            }, 500);
+        } else {
+            console.error('TTTM: Failed to get explanation');
+        }
+    } catch (error) {
+        console.error('TTTM: Error getting explanation:', error);
+    }
+}
+
 // Handle Explain button
 function handleExplain() {
     if (selectedText) {
-        // Send message to background script for explanation
-        chrome.runtime.sendMessage({
-            action: 'explainText',
-            text: selectedText
-        });
+        console.log('TTTM: Requesting explanation for:', selectedText);
+        sendExplanationRequest(selectedText);
         hideWidget();
     }
 }
