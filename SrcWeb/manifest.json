@@ -19,7 +19,8 @@
   "permissions": [
     "storage",
     "scripting",
-    "activeTab", "audioCapture"
+    "activeTab",
+    "audioCapture"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -41,8 +42,6 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "capture.html",
-        "capture.js",
         "icon.png"
       ],
       "matches": [

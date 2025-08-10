@@ -2,16 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Popup</title>
+  <title>TTTM Extension</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <!-- Removed extension name/title for a cleaner popup -->
-  <button id="askProf">Ask Professor</button>
-  <button id="setupMic">Setup Mic</button>
-  <button id="micBtn">Enable Mic</button>
-  <button id="checkMicBtn">Check Mic Status</button>
-  <h3 id="TutorialText">For the extension to work, please enable microphone for the extension, when hit "Enable Mic"</h3>
+  <div class="popup-container">
+    <h3>TTTM Extension</h3>
+    <button id="setupMic" class="main-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+      </svg>
+      Set Up Mic
+    </button>
+    <button id="checkMicStatus" class="main-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+      </svg>
+      Check Mic Status
+    </button>
+    <div id="status" class="status-message"></div>
+  </div>
   <script src="popup.js"></script>
 </body>
 </html>

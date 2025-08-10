@@ -1,9 +1,11 @@
 // background.js
 chrome.runtime.onInstalled.addListener(() => {
-  console.log('Extension installed.');
+  console.log('TTTM Extension installed.');
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  console.log('Background received message:', msg);
+  
   if (msg.action === 'askProfessor') {
     // Open the professor interface with the selected text
     chrome.tabs.create({
