@@ -1,8 +1,9 @@
 from elevenlabs.client import ElevenLabs
+import os
 
 class voice_api:
-    def __init__(self, api_url):
-        self.ask_client = ElevenLabs(api_key=api_url)
+    def __init__(self):
+        self.ask_client = ElevenLabs(api_key=os.getenv('ELEVEN_API_KEY'))
 
     def transcribe(self, audio_file):
         audio = open(audio_file, "rb")
